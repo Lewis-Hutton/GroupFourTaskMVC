@@ -1,8 +1,41 @@
-﻿@{
+﻿@model IEnumerable<GroupFourTaskMVC.Models.Book>
+@{
     ViewData["Title"] = "Home Page";
+    
 }
 
 <div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+    <h1 class="display-4">Books</h1>
+    <form asp-controller="Home" asp-action="Index">
+        <p>
+            Title: <input type = "text" name="SearchString" />
+            <input type="submit" value="Search" />    
+        </p>
+    </form>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>
+                    Title
+                </th>
+                <th>
+                    Reserve
+                </th>
+            </tr>
+
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.title)
+                    </td>
+                    <td>
+                        <a asp-action="Reserve" asp-route-id="@item.id">Reserve</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
 </div>
