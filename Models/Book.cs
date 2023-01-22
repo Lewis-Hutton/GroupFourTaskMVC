@@ -10,6 +10,7 @@ namespace GroupFourTaskMVC.Models
     {
         public string id { get; set; }
         public string title { get; set; }
+        public string? resID { get; set; }
 
     }
     public class Books

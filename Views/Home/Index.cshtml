@@ -32,14 +32,24 @@
                         @Html.DisplayFor(modelItem => item.title)
                     </td>
                     <td>
-                        <form asp-controller="Home" asp-action="Reserve" >
+                        @if (item.resID == null)
+                        {
+                            <form asp-controller="Home" asp-action="Reserve">
                                 <input type="hidden" name="bookID" value="@item.id" />
                                 <input type="submit" value="Reserve" />
-                        </form>
-                         <form asp-controller="Home" asp-action="Cancel" >
+                            </form>                            
+                        }
+                        else
+                        {
+
+                            <form asp-controller="Home" asp-action="Cancel">
                                 <input type="hidden" name="bookID" value="@item.id" />
                                 <input type="submit" value="Cancel" />
-                        </form>
+                            </form>
+                            <span>Reserved with ID: @item.resID</span>
+
+                        }
+                       
                     </td>
                 </tr>
             }

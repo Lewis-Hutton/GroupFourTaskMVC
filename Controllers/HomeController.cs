@@ -10,6 +10,7 @@ using Microsoft.Extensions.Hosting.Internal;
 using System.Collections;
 using System.Linq;
 using System.Net;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 
 namespace GroupFourTaskMVC.Controllers
 {
@@ -31,13 +32,23 @@ namespace GroupFourTaskMVC.Controllers
             // If the task involved adding or changing this data, a database would be used instead. 
 
             IList<Book> books = getBooks();
-
+            
+            
             if (books == null)
             {
                 return Problem("Books json doesn't exist");
             }
+            foreach (Book book in books)
+            {
+                ReservationStatus checkStatus = getReservationStatus().SingleOrDefault(res => res.BookID.Equals(book.id));
+                book.resID = null;
+                if (checkStatus != null)
+                {
+                    book.resID = checkStatus.ReservationID;
+                }
+            }
             // If no search, return all books
-            else if (searchString == null)
+            if (searchString == null)
             {
                 return View(books);
             }
@@ -58,7 +69,7 @@ namespace GroupFourTaskMVC.Controllers
             return books;
         }
 
-        private IList<ReservationStatus> getReservationStatus()
+        public IList<ReservationStatus> getReservationStatus()
         {
             string path = Path.Combine(_webHostEnvironment.ContentRootPath, "App_Data\\ReservationStatus.csv");
             string statusText = System.IO.File.ReadAllText(path);
@@ -98,6 +109,8 @@ namespace GroupFourTaskMVC.Controllers
         }
         public void updateReservationStatus()
         {
+            // Read through the event log to create a snapshot of the current reservation status. 
+            // This can be done asynchronously for a more responsive program, but with the size of this test, isn't needed. 
             string path = Path.Combine(_webHostEnvironment.ContentRootPath, "App_Data\\ReservationEvents.csv");
             string eventsText = System.IO.File.ReadAllText(path);
 
@@ -177,7 +190,12 @@ namespace GroupFourTaskMVC.Controllers
             updateReservationStatus();
             return RedirectToAction("Index");
         }
-
+        public IActionResult ShowReservationButton(string bookID)
+        {
+            ReservationStatus resStatus = getReservationStatus().SingleOrDefault(res => res.BookID.Equals(bookID));
+            ViewBag.bookid = bookID;
+            return PartialView("_ReservationButtonPartial", resStatus);
+        }
         public IActionResult Privacy()
         {
             return View();
