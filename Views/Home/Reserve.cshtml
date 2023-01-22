@@ -1,0 +1,16 @@
+﻿@model GroupFourTaskMVC.Models.ReservationStatus
+
+@{
+    ViewData["Title"] = "Reserve";
+}
+
+<h1>Reserve Book</h1>
+<p>
+    Book with ID : @Model.BookID <br/>
+    Reserved with booking ID: @Model.ReservationID.
+</p>
+<form method="post">
+    
+    <input type="submit" value="Reserve" class="btn" /> |
+    <a asp-controller="Home" asp-action="Index" >Back to List</a>
+</form>

@@ -7,6 +7,9 @@ using System.Text;
 using System.IO;
 using Newtonsoft.Json.Linq;
 using Microsoft.Extensions.Hosting.Internal;
+using System.Collections;
+using System.Linq;
+using System.Net;
 
 namespace GroupFourTaskMVC.Controllers
 {
@@ -24,14 +27,16 @@ namespace GroupFourTaskMVC.Controllers
 
         public IActionResult Index(string searchString)
         {
-           string path = Path.Combine(_webHostEnvironment.ContentRootPath, "App_Data\\Books.json");
-           string jsonText = System.IO.File.ReadAllText(path);
+            // Read the file where the book information is stored. 
+            // If the task involved adding or changing this data, a database would be used instead. 
 
-           JArray jsonBooks = JArray.Parse(jsonText);
-           IList<Book> books = ((JArray)jsonBooks).ToObject<IList<Book>>();
+            IList<Book> books = getBooks();
 
             if (books == null)
+            {
                 return Problem("Books json doesn't exist");
+            }
+            // If no search, return all books
             else if (searchString == null)
             {
                 return View(books);
@@ -39,16 +44,140 @@ namespace GroupFourTaskMVC.Controllers
             else
             {
                 IEnumerable<Book> searchedBooks = books.Where(book => book.title.Contains(searchString));
-
-
-
                 return View(searchedBooks);
+            }
+        }
 
+        private IList<Book> getBooks()
+        {
+            string path = Path.Combine(_webHostEnvironment.ContentRootPath, "App_Data\\Books.json");
+            string jsonText = System.IO.File.ReadAllText(path);
+
+            JArray jsonBooks = JArray.Parse(jsonText);
+            IList<Book> books = ((JArray)jsonBooks).ToObject<IList<Book>>();
+            return books;
+        }
+
+        private IList<ReservationStatus> getReservationStatus()
+        {
+            string path = Path.Combine(_webHostEnvironment.ContentRootPath, "App_Data\\ReservationStatus.csv");
+            string statusText = System.IO.File.ReadAllText(path);
+            IList<ReservationStatus> statuses = new List<ReservationStatus>();
+            foreach (string statusRow in statusText.Split('\n'))
+            {
+                if (!string.IsNullOrEmpty(statusRow))
+                {
+                    ReservationStatus newStatus = new ReservationStatus();
+                    string[] statusCols = statusRow.Split(",");
+                    newStatus.BookID = statusCols[0].Trim();
+                    newStatus.ReservationID = statusCols[1].Trim();
+                    statuses.Add(newStatus);
+
+                }
+            }
+            return statuses;
+        }
+        public IActionResult Cancel(string bookID)
+        {
+            string path = Path.Combine(_webHostEnvironment.ContentRootPath, "App_Data\\ReservationEvents.csv");
+
+            // Send cancel event
+            if (true)
+            {
+                using (FileStream resFile = new FileStream(path, FileMode.Append, FileAccess.Write))
+                {
+                    using (StreamWriter resWriter = new StreamWriter(resFile))
+                    {
+                        // Trigger event
+                        resWriter.WriteLine(DateTime.Now.ToString() + ", Cancelled, " + bookID + ", ");
+                    }
+                }
+            }
+            updateReservationStatus();
+            return RedirectToAction("Index");
+        }
+        public void updateReservationStatus()
+        {
+            string path = Path.Combine(_webHostEnvironment.ContentRootPath, "App_Data\\ReservationEvents.csv");
+            string eventsText = System.IO.File.ReadAllText(path);
+
+            IList<ReservationEvent> events = new List<ReservationEvent>();
+            IList<ReservationStatus> statuses = new List<ReservationStatus>();
+            foreach (string eventRow in eventsText.Split('\n'))
+            {
+                if (!string.IsNullOrEmpty(eventRow))
+                {
+                    ReservationEvent newEvent = new ReservationEvent();
+                    string[] eventCols = eventRow.Split(',');
+                    newEvent.timestamp = eventCols[0].Trim();
+                    newEvent.eventType = eventCols[1].Trim();
+                    newEvent.BookID = eventCols[2].Trim();
+                    newEvent.ReservationID = eventCols[3].Trim();
+                    events.Add(newEvent);
+                   
+                    var resToUpdate = statuses.SingleOrDefault(status => status.BookID.Equals(newEvent.BookID));
+                    
+                    if (resToUpdate != null)
+                    {
+                        if (newEvent.eventType.Trim() == "Cancelled")
+                        {
+                            statuses.Remove(resToUpdate);
+                        }
+                    }
+                    else 
+                    {
+                        if (newEvent.eventType.Trim() == "Reserved")
+                        {
+                            ReservationStatus newStatus = new ReservationStatus();
+                            newStatus.BookID = newEvent.BookID;
+                            newStatus.ReservationID = newEvent.ReservationID;
+                            statuses.Add(newStatus);
+                        }
+                    }
+                }
+            }
+                
+            string statusPath = Path.Combine(_webHostEnvironment.ContentRootPath, "App_Data\\ReservationStatus.csv");
+            using (FileStream statusFile = new FileStream(statusPath, FileMode.Truncate, FileAccess.Write))
+            {
+                using (StreamWriter statusWriter = new StreamWriter(statusFile))
+                {
+                    foreach(ReservationStatus status in statuses)
+                    {
+                        statusWriter.WriteLine(status.BookID + ", " + status.ReservationID);
+                    }
+                }
             }
             
 
+
         }
-        
+        public IActionResult Reserve(string bookID)
+        {
+            // perform action
+            string path = Path.Combine(_webHostEnvironment.ContentRootPath, "App_Data\\ReservationEvents.csv");            
+            ReservationEvent newRes = new ReservationEvent();
+            newRes.ReservationID = Guid.NewGuid().ToString();
+            newRes.BookID = bookID;
+            // Check if book is reserved, if not reserve it. 
+            ReservationStatus resStatus = getReservationStatus().SingleOrDefault(res => res.BookID.Equals(bookID));            
+            if (resStatus == null)
+            {
+                    using (FileStream resFile = new FileStream(path, FileMode.Append, FileAccess.Write))
+                    {
+                        using (StreamWriter resWriter = new StreamWriter(resFile))
+                        {
+                            // Trigger event
+                            resWriter.WriteLine(DateTime.Now.ToString() + ", Reserved, " + newRes.BookID + ", " + newRes.ReservationID);
+                        }
+                    }
+
+
+            }
+            updateReservationStatus();
+            return RedirectToAction("Index");
+        }
+
         public IActionResult Privacy()
         {
             return View();

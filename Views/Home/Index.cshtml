@@ -32,7 +32,14 @@
                         @Html.DisplayFor(modelItem => item.title)
                     </td>
                     <td>
-                        <a asp-action="Reserve" asp-route-id="@item.id">Reserve</a>
+                        <form asp-controller="Home" asp-action="Reserve" >
+                                <input type="hidden" name="bookID" value="@item.id" />
+                                <input type="submit" value="Reserve" />
+                        </form>
+                         <form asp-controller="Home" asp-action="Cancel" >
+                                <input type="hidden" name="bookID" value="@item.id" />
+                                <input type="submit" value="Cancel" />
+                        </form>
                     </td>
                 </tr>
             }
